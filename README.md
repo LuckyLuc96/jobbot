@@ -28,4 +28,3 @@ This project is licensed under the MIT License.
 
 Jobbot - a program to make job applications easier.
 Created by [Christian McCrea](https://github.com/LuckyLuc96).
-```

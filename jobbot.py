@@ -26,11 +26,11 @@ def check_element(driver, xpath):
     except TimeoutException:
         return False
 
-# I had an error with the element being in view, but still saying it was not clickable.
 # This function exists to move the viewport directly to where the element is
 def scroll_into_view(driver, element):
     driver.execute_script("arguments[0].scrollIntoView(true);", element)
-    print(f"{element} has been scrolled into view!")
+    print(f"Scrolling the element into view: {element}")
+    time.sleep(3)
 
 
 try:
@@ -45,7 +45,7 @@ try:
     search_title = driver.find_element(By.ID, "text-input-what")
     search_location = driver.find_element(By.ID, "text-input-where")
 
-    #Replace these two values with the search terms you prefer.
+    #Search items will become user inputs after testing is finished
     searchname = "administrative"
     searchlocation = "remote"
     search_title.clear()
@@ -60,8 +60,7 @@ try:
             EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and text()='Apply now' and not(ancestor::*[@aria-label='Apply now (opens in a new tab)'])]"))
     )
     print("Apply button found!:",apply_button.get_attribute('innerHTML'))
-    driver.execute_script("arguments[0].scrollIntoView(true);", apply_button)
-    time.sleep(3)
+    scroll_into_view(driver, apply_button)
     apply_button.click()
     print("Apply button clicked!")
     time.sleep(sleeptime)
@@ -75,33 +74,36 @@ try:
     print("Resume selected!")
     time.sleep(2)
 
+    continue_list = ["ia-WorkExperience-continue","","",""]
+                    #Does nothing right now. Will add the possible phrases into the button naming/logic portion for more accurate selection
+                    #"//span[contains(@class, 'continue_list[x]')]"
+
 
     submission = False
     while not submission:
         continue_path = "//button[contains(span/text(), 'Continue')]"
         submit_path = "//button[contains(span/text(), 'Submit your application')]"
-        print("This is inside of the while loop, but before any arguments are passed.")
+        print("DEBUGG: This is inside of the while loop, but before any arguments are passed.")
         if check_element(driver, continue_path):
-            print("continue_path taken")
+            print("DEBUGG: continue_path taken")
             continue_button = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//button[contains(span/text(), 'Continue')]"))
+                EC.presence_of_element_located((By.XPATH, "//span[contains(text(), 'Continue')]"))
             )
             print("Continue button found!", continue_button.get_attribute('innerHTML'))
             scroll_into_view(driver, continue_button)
-            time.sleep(3)
+            # Persistent error at this point - Selenium says "Element <span> could not be scrolled into view", even though the object is in view.
             continue_button.click()
             print("Continue button selected!")
             print(f"Waiting {sleeptime} seconds.")
             time.sleep(sleeptime)
 
         elif check_element(driver, submit_path):
-            print("submit_path taken")
+            print("DEBUGG: submit_path taken")
             submit_button = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//button[contains(span/text(), 'Submit your application')]"))
+                EC.presence_of_element_located((By.XPATH, "//span[contains(text(), 'Submit your application')]"))
             )
             print("Submit button found!", submit_button.get_attribute('innerHTML'))
-            driver.execute_script("arguments[0].scrollIntoView();", submit_button)
-            time.sleep(5)
+            scroll_into_view(driver, submit_button)
             submit_button.click()
             print("Submit button selected!")
             print(f"Waiting {sleeptime} seconds.")
@@ -126,24 +128,24 @@ finally:
 
 
 
-#MIT License
+# MIT License
+# Jobbot - a program to make job applications easier.
+# Copyright (c) [2024] [Christian McCrea]
 #
-#Copyright (c) [2024] [Christian McCrea]
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
 #
-#Permission is hereby granted, free of charge, to any person obtaining a copy
-#of this software and associated documentation files (the "Software"), to deal
-#in the Software without restriction, including without limitation the rights
-#to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-#copies of the Software, and to permit persons to whom the Software is
-#furnished to do so, subject to the following conditions:
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
 #
-#The above copyright notice and this permission notice shall be included in all
-#copies or substantial portions of the Software.
-#
-#THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-#IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-#FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-#AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-#LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-#OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-#SOFTWARE.
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.

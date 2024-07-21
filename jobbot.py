@@ -9,6 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import time
+from functools import wraps
 
 options = webdriver.FirefoxOptions()
 options.profile = webdriver.FirefoxProfile(profile_path)
@@ -32,12 +33,28 @@ def scroll_into_view(driver, element):
     print(f"Scrolling the element into view: {element}")
     time.sleep(3)
 
+# Function wrapper to ensure that a element on the page is actually visible to the bot
+def ensure_visible(func):
+    @wraps(func)
+    def wrapper(driver, element, *args, **kwargs):
+        driver.execute_script("""
+            var element = arguments[0];
+            element.style.display = 'block';
+            element.style.visibility = 'visible';
+            element.style.opacity = 1;
+        """, element)
+        return func(driver, element, *args, **kwargs)
+    return wrapper
+
+@ensure_visible
+def click_element(driver, element):
+    print(f"Clicking the element: {element}!")
+    element.click()
 
 try:
     sleeptime = 5 #will make this a user input to add a variable and safe delay on new page loading.
     #int(input("How slow is the internet today? In seconds: \n"))
     print(f"Okay, great! Starting up. Some parts of the program will wait {sleeptime} seconds to load.")
-    print("For now this program is still being made, but it is planned to be ran in 'headless' mode which means you won't see the actual browser window.")
 
     driver.get("http://www.indeed.com/")
     print("Website opened: ", driver.title)
@@ -53,46 +70,46 @@ try:
     search_location.clear()
     search_location.send_keys(searchlocation)
     search_location.send_keys(Keys.RETURN)
+    captchacheck = input("Press the 'enter' key here when you're ready to proceed.\nThis exists to halt the program until the user can complete any potential captchas.\n")
     print(f"Search of {searchname} with the location set to {searchlocation}")
     time.sleep(3)
 
     apply_button = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and text()='Apply now' and not(ancestor::*[@aria-label='Apply now (opens in a new tab)'])]"))
     )
+
+    if not apply_button:
+        pass
+        #This is where I'll add logic to select only on-site and jobs.
+        #Presently the html which includes the information of whether
+        #or not the job is on-site or not is not given, unless an
+        #individual job from the list of jobs get clicked on.
+
+
     print("Apply button found!:",apply_button.get_attribute('innerHTML'))
     scroll_into_view(driver, apply_button)
     apply_button.click()
-    print("Apply button clicked!")
+    print(f"Apply button clicked, and waiting {sleeptime} seconds!")
     time.sleep(sleeptime)
     driver.switch_to.window(driver.window_handles[1])
     print("Focusing on newly opened tab..")
-    resume_selection = WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.XPATH, "//span[text()='Indeed Resume']"))
-    )
-    print("Resume selection button found!:",resume_selection.get_attribute('innerHTML'))
-    resume_selection.click()
-    print("Resume selected!")
-    time.sleep(2)
 
-    continue_list = ["ia-WorkExperience-continue","","",""]
-                    #Does nothing right now. Will add the possible phrases into the button naming/logic portion for more accurate selection
-                    #"//span[contains(@class, 'continue_list[x]')]"
 
 
     submission = False
     while not submission:
         continue_path = "//button[contains(span/text(), 'Continue')]"
         submit_path = "//button[contains(span/text(), 'Submit your application')]"
+        #question_path = ""
         print("DEBUGG: This is inside of the while loop, but before any arguments are passed.")
+
         if check_element(driver, continue_path):
             print("DEBUGG: continue_path taken")
             continue_button = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, "//span[contains(text(), 'Continue')]"))
+                EC.presence_of_element_located((By.XPATH, "//button[span[contains(text(), 'Continue')]]"))
             )
-            print("Continue button found!", continue_button.get_attribute('innerHTML'))
             scroll_into_view(driver, continue_button)
-            # Persistent error at this point - Selenium says "Element <span> could not be scrolled into view", even though the object is in view.
-            continue_button.click()
+            click_element(driver, continue_button)
             print("Continue button selected!")
             print(f"Waiting {sleeptime} seconds.")
             time.sleep(sleeptime)
@@ -109,9 +126,10 @@ try:
             print(f"Waiting {sleeptime} seconds.")
             time.sleep(sleeptime)
             submission = True
+
         else:
             print("Element not found. Exiting..")
-            submission = True
+            break
 
 
 
@@ -123,6 +141,7 @@ except Exception as e:
 finally:
     driver.quit()
     print("Browser closed!")
+
 
 
 

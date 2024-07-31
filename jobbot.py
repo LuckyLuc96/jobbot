@@ -113,7 +113,7 @@ def main():
         #    scroll_into_view(driver, captcha)
         #    input("Captcha detected! Please press enter after you have completed the captcha and the program will then continue.\n")
         if check_element(driver, continue_path):
-            continue_button = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//button[span[contains(text(), 'Continue')] or span[contains(text(), 'Review your    application')]]")))
+            continue_button = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//button[span[contains(text(), 'Continue')] or span[contains(text(), 'Review your application')]]")))
             scroll_into_view(driver, continue_button)
             click_element(driver, continue_button)
             print("Continue button selected!")

@@ -36,7 +36,7 @@ def ensure_visible(func):
 
 def check_element(driver, xpath):
     try:
-        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, xpath)))
+        WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, xpath)))
         return True
     except TimeoutException:
         return False
@@ -44,12 +44,10 @@ def check_element(driver, xpath):
 # This function exists to move the viewport directly to where the element is
 def scroll_into_view(driver, element):
     driver.execute_script("arguments[0].scrollIntoView(true);", element)
-    print(f"Scrolling the element into view: {element}")
     time.sleep(0.5)
 
 @ensure_visible
 def click_element(driver, element):
-    print(f"Clicking the element: {element}!")
     element.click()
 
 def init():
@@ -60,7 +58,7 @@ def init():
     #Search items will become user inputs after testing is finished
     searchname = "administrative assistant"
     searchlocation = "remote, USA"
-    print(f"Starting up. Some parts of the program will wait {sleeptime} seconds to load.")
+    print(f"Starting up. Various parts of the process will wait {sleeptime} seconds between actions.")
 
     driver.get("http://www.indeed.com/")
     print("Website opened: ", driver.title)
@@ -74,30 +72,29 @@ def jobsearch():
     search_location.send_keys(searchlocation)
     search_location.send_keys(Keys.RETURN)
     print(f"Search of {searchname} with the location set to {searchlocation}")
-    captchacheck = input(str("Press the 'enter' key here when you're ready to proceed.\nThis exists to halt the program until the user can complete any potential captchas.\n"))
     time.sleep(1)
 
 def main():
+    time.sleep(sleeptime)
     jobtitles = driver.find_elements(By.XPATH, '//*[contains(@class, "jcs-JobTitle")]')
     for item in jobtitles:
         scroll_into_view(driver, item)
         click_element(driver, item)
-        print("Searching for on-site application..")
+        print("Searching for an on-site application..")
         #apply_button = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and contains (text(),'Apply now') and not (ancestor::*[@aria-label='Apply now (opens in a new  tab)'])]")))
         apply_button = check_element(driver, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and contains (text(),'Apply now') and not (ancestor::*[@aria-label='Apply now (opens in a new  tab)'])]")
         if apply_button:
-            apply_button = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and contains (text(),'Apply now') and not (ancestor::*[@aria-label='Apply now (opens in a new  tab)'])]")))
+            apply_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and contains (text(),'Apply now') and not (ancestor::*[@aria-label='Apply now (opens in a new  tab)'])]")))
             print("Eligible application found!")
             time.sleep(3)
             apply_button.click()
-            print(f"Apply button clicked, and waiting {sleeptime} seconds!")
             break
         else:
             print("This job is offsite. Lets try another one..")
             continue
 
 
-    time.sleep(sleeptime)
+    time.sleep(1.5)
     driver.switch_to.window(driver.window_handles[1])
     print("Focusing on newly opened tab..")
 
@@ -105,34 +102,38 @@ def main():
 
     submission = False
     while not submission:
-        captcha = ""
+        captcha = "//elementname[contains(text(), 'I'm not a robot'"
         continue_path = "//button[contains(span/text(), 'Continue')]"
         submit_path = "//button[contains(span/text(), 'Submit your application')]"
+        review_path = "//button[contains(span/text(), 'Review your application') or //h1[normalize-space(text())='Answer these questions from the employer']]"
 
         #if check_element(driver, captcha):
         #    scroll_into_view(driver, captcha)
         #    input("Captcha detected! Please press enter after you have completed the captcha and the program will then continue.\n")
-        if check_element(driver, continue_path):
-            continue_button = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//button[span[contains(text(), 'Continue')] or span[contains(text(), 'Review your application')]]")))
+
+        if check_element(driver, review_path):
+            input("Work in progress. Progress through the page manually and progress to the next page, and then press enter on the command line to continue.\n")
+            #Fill in the questions programatically. This is going to require the user to provide the answers to these questions within the program when they set it up so that they are unique to the user. These answers will be added to and then extracted from profiles.py, which will probably be renamed to settings.py.
+
+        elif check_element(driver, continue_path):
+            continue_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, "//button[span[contains(text(), 'Continue')] or span[contains(text(), 'Review your application')]]")))
             scroll_into_view(driver, continue_button)
             click_element(driver, continue_button)
             print("Continue button selected!")
-            print(f"Waiting {sleeptime} seconds.")
             time.sleep(sleeptime)
 
         elif check_element(driver, submit_path):
-            submit_button = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//button[span[contains(text(), 'Submit your application')]]")))
+            submit_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, "//button[span[contains(text(), 'Submit your application')]]")))
             print("Submit button found!", submit_button.get_attribute('innerHTML'))
             scroll_into_view(driver, submit_button)
-            print("Waiting 5 seconds. If there is a captcha, this is the time to click it!")
-            time.sleep(5)
+            print("Waiting 10 seconds. If there is a captcha, this is the time to click it!")
+            time.sleep(11) #actually waiting 11 seconds, but who's counting?
             submit_button.click()
             print("Application submitted!")
             print("Submit button selected!")
             time.sleep(2)
             driver.close()
             driver.switch_to.window(driver.window_handles[0]) #Return focus to main window
-            print(f"Refreshing page, and waiting {sleeptime} seconds.")
             driver.refresh()
             time.sleep(sleeptime)
             submission = True

@@ -43,9 +43,9 @@ def check_element(driver, xpath):
 
 # This function exists to move the viewport directly to where the element is
 def scroll_into_view(driver, element):
+    time.sleep(0.25)
     driver.execute_script("arguments[0].scrollIntoView(true);", element)
-    time.sleep(0.5)
-
+    time.sleep(0.25)
 @ensure_visible
 def click_element(driver, element):
     element.click()
@@ -81,7 +81,6 @@ def main():
         scroll_into_view(driver, item)
         click_element(driver, item)
         print("Searching for an on-site application..")
-        #apply_button = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and contains (text(),'Apply now') and not (ancestor::*[@aria-label='Apply now (opens in a new  tab)'])]")))
         apply_button = check_element(driver, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and contains (text(),'Apply now') and not (ancestor::*[@aria-label='Apply now (opens in a new  tab)'])]")
         if apply_button:
             apply_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and contains (text(),'Apply now') and not (ancestor::*[@aria-label='Apply now (opens in a new  tab)'])]")))
@@ -97,26 +96,29 @@ def main():
     time.sleep(1.5)
     driver.switch_to.window(driver.window_handles[1])
     print("Focusing on newly opened tab..")
+    time.sleep(sleeptime)
 
 
 
     submission = False
     while not submission:
-        captcha = "//elementname[contains(text(), 'I'm not a robot'"
+        #captcha = "//iframe[starts-with(@name, 'a-') and starts-with(@src, 'https://www.google.com/recaptcha')]"
         continue_path = "//button[contains(span/text(), 'Continue')]"
         submit_path = "//button[contains(span/text(), 'Submit your application')]"
         review_path = "//button[contains(span/text(), 'Review your application') or //h1[normalize-space(text())='Answer these questions from the employer']]"
 
         #if check_element(driver, captcha):
+        #    print("captcha path")
         #    scroll_into_view(driver, captcha)
         #    input("Captcha detected! Please press enter after you have completed the captcha and the program will then continue.\n")
 
         if check_element(driver, review_path):
-            input("Work in progress. Progress through the page manually and progress to the next page, and then press enter on the command line to continue.\n")
+            print("Work in progress. Progress through the page manually and progress to the next page. The program will detect when this is done.\nWaiting 10 seconds.")
+            time.sleep(10)
             #Fill in the questions programatically. This is going to require the user to provide the answers to these questions within the program when they set it up so that they are unique to the user. These answers will be added to and then extracted from profiles.py, which will probably be renamed to settings.py.
 
         elif check_element(driver, continue_path):
-            continue_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, "//button[span[contains(text(), 'Continue')] or span[contains(text(), 'Review your application')]]")))
+            continue_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, "//button[span[contains(text(), 'Continue')] or //span[contains(text(), 'Review your application')]]")))
             scroll_into_view(driver, continue_button)
             click_element(driver, continue_button)
             print("Continue button selected!")

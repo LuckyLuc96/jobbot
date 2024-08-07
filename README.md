@@ -3,6 +3,10 @@
 Jobbot is a program written in Python and using Selenium and is designed to automate the process of applying for jobs on Indeed. It uses the Firefox WebDriver to interact with the web pages, filling out forms and clicking buttons just as a human user would.
 Currently the bot must be supervised, because the user is required to answer job questions and to complete captchas.
 
+## See it in action!
+
+[![Jobbot Demonstration](https://markdown-videos-api.jorgenkh.no/url?url=https%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3D5FQ2L6zbRMc)](https://www.youtube.com/watch?v=5FQ2L6zbRMc)
+
 ## Features
 - Opens the Indeed website and searches for jobs based on specified criteria.
 - Automatically clicks the "Apply now" button and handles the application process.

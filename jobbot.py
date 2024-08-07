@@ -1,3 +1,24 @@
+# MIT License
+# Jobbot - a program to make job applications easier.
+# Copyright (c) [2024] [Christian McCrea]
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 from profilenames import profile_path, geckodriver_path
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
@@ -56,8 +77,8 @@ def init():
     global searchlocation
     sleeptime = 5
     #Search items will become user inputs after testing is finished
-    searchname = "administrative assistant"
-    searchlocation = "remote, USA"
+    searchname = input(str("Type in a job title you are looking for, such as: administrative assistant\n"))
+    searchlocation = input(str("Type in a job location you are looking for, such as: Remote, USA\n"))
     print(f"Starting up. Various parts of the process will wait {sleeptime} seconds between actions.")
 
     driver.get("http://www.indeed.com/")
@@ -108,14 +129,14 @@ def main():
         review_path = "//button[contains(span/text(), 'Review your application') or //h1[normalize-space(text())='Answer these questions from the employer']]"
 
         #if check_element(driver, captcha):
-        #    print("captcha path")
+        #    print("Captcha detected! Please complete it and then wait for the program to continue.")
         #    scroll_into_view(driver, captcha)
-        #    input("Captcha detected! Please press enter after you have completed the captcha and the program will then continue.\n")
+        #    time.sleep(10)
 
         if check_element(driver, review_path):
             print("Work in progress. Progress through the page manually and progress to the next page. The program will detect when this is done.\nWaiting 10 seconds.")
             time.sleep(10)
-            #Fill in the questions programatically. This is going to require the user to provide the answers to these questions within the program when they set it up so that they are unique to the user. These answers will be added to and then extracted from profiles.py, which will probably be renamed to settings.py.
+            #TODO: Fill in some questions programatically. This is going to require the user to provide the answers to these questions within the program when they set it up so that they are unique to the user. These answers will be added to and then extracted from profiles.py, which will probably be renamed to settings.py.
 
         elif check_element(driver, continue_path):
             continue_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, "//button[span[contains(text(), 'Continue')] or //span[contains(text(), 'Review your application')]]")))
@@ -159,28 +180,3 @@ except Exception as e:
 finally:
     driver.quit()
     print("Browser closed!")
-
-
-
-
-# MIT License
-# Jobbot - a program to make job applications easier.
-# Copyright (c) [2024] [Christian McCrea]
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.

@@ -57,7 +57,7 @@ def ensure_visible(func):
 
 def check_element(driver, xpath):
     try:
-        WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, xpath)))
+        WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, xpath)))
         return True
     except TimeoutException:
         return False
@@ -75,10 +75,12 @@ def init():
     global sleeptime
     global searchname
     global searchlocation
+    global num_trys
     sleeptime = 5
     #Search items will become user inputs after testing is finished
     searchname = input(str("Type in a job title you are looking for, such as: administrative assistant\n"))
     searchlocation = input(str("Type in a job location you are looking for, such as: Remote, USA\n"))
+    num_trys = int(input("How many applications would you like to attempt?\n"))
     print(f"Starting up. Various parts of the process will wait {sleeptime} seconds between actions.")
 
     driver.get("http://www.indeed.com/")
@@ -122,19 +124,24 @@ def main():
 
 
     submission = False
-    while not submission:
-        #captcha = "//iframe[starts-with(@name, 'a-') and starts-with(@src, 'https://www.google.com/recaptcha')]"
-        continue_path = "//button[contains(span/text(), 'Continue')]"
-        submit_path = "//button[contains(span/text(), 'Submit your application')]"
-        review_path = "//button[contains(span/text(), 'Review your application') or //h1[normalize-space(text())='Answer these questions from the employer']]"
+    def submission_complete():
+        driver.close()
+        driver.switch_to.window(driver.window_handles[0])
+        driver.refresh()
+        time.sleep(sleeptime)
+        submission = True
 
-        #if check_element(driver, captcha):
-        #    print("Captcha detected! Please complete it and then wait for the program to continue.")
-        #    scroll_into_view(driver, captcha)
-        #    time.sleep(10)
+    while not submission:
+        #This captcha is looking for a specific width and height, because that is the description of the captcha box the user must interact with. The page after the submission included an identical element that is not interactable, but was previously detected by this progam and getting stuck.
+        captcha = "//iframe[@width='304' and @height='78' and contains(@name, 'a-') and contains(@src, 'recaptcha/enterprise/anchor')]"
+        completed_path = "//h1[normalize-space(text())='Your application has been submitted!' or normalize-space(text())='Complete a test to help your application stand out' or normalize-space(text())='... share an assessment?']" #Find the missing value for this 3rd option
+        continue_path = "//button[contains(span/text(), 'Continue')]"
+        review_path = "//button[contains(span/text(), 'Review your application') or //h1[normalize-space(text())='Answer these questions from the employer']]"
+        submit_path = "//button[contains(span/text(), 'Submit your application')]"
+
 
         if check_element(driver, review_path):
-            print("Work in progress. Progress through the page manually and progress to the next page. The program will detect when this is done.\nWaiting 10 seconds.")
+            print("Answer the questions on this page and progress to the next page. The program will detect when this is done.\nWaiting 10 seconds.")
             time.sleep(10)
             #TODO: Fill in some questions programatically. This is going to require the user to provide the answers to these questions within the program when they set it up so that they are unique to the user. These answers will be added to and then extracted from profiles.py, which will probably be renamed to settings.py.
 
@@ -144,29 +151,27 @@ def main():
             click_element(driver, continue_button)
             print("Continue button selected!")
             time.sleep(sleeptime)
-
+        elif check_element(driver, captcha):
+            print("Captcha detected! Please complete it and then hit the submit button. The program will continue in 10 seconds..")
+            time.sleep(10)
+            continue
+        elif check_element(driver, completed_path):
+            print("Application completed!")
+            submission_complete()
         elif check_element(driver, submit_path):
-            submit_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, "//button[span[contains(text(), 'Submit your application')]]")))
-            print("Submit button found!", submit_button.get_attribute('innerHTML'))
+            submit_button = WebDriverWait(driver, sleeptime).until (EC.presence_of_element_located((By.XPATH, "//button[span[contain(text(), 'Submit  your application')]]")))
             scroll_into_view(driver, submit_button)
-            print("Waiting 10 seconds. If there is a captcha, this is the time to click it!")
-            time.sleep(11) #actually waiting 11 seconds, but who's counting?
+            time.sleep(2)
             submit_button.click()
             print("Application submitted!")
-            print("Submit button selected!")
             time.sleep(2)
-            driver.close()
-            driver.switch_to.window(driver.window_handles[0]) #Return focus to main window
-            driver.refresh()
-            time.sleep(sleeptime)
-            submission = True
+            submission_complete()
         else:
-            print("Element not found. Exiting..")
+            print("None of the expected elements were found!")
             break
 
 try:
     init()
-    num_trys = int(input("How many applications would you like to attempt?\n"))
     counter = 0
     while counter < num_trys:
         jobsearch()

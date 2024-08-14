@@ -140,7 +140,7 @@ def main():
         continue_path = "//button[contains(span/text(), 'Continue')]"
 
         #Following logic is made to reduce search time on a page to decide what to do next. Instead of searching each element individually, it will search for all of the elements I am looking for. When one is found, it will then execute the related commands for that element.
-        xpaths = [review_path, captcha, completed_path, continue_path, submit_path]
+        xpaths = [review_path, captcha, completed_path, continue_path, submit_path] #The order these elements are in also reflect the order they will be searched for. So the 1st item is the top priority. Before when I had review_path after the continue_path, the continue button was being selected, even though there were unanswered questions.
         combined_paths = " | ".join(xpaths)
 
         def check_element():

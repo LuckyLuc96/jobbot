@@ -72,17 +72,19 @@ def click_element(driver, element):
     element.click()
 
 def init():
+
     global sleeptime
     global searchname
     global searchlocation
     global num_trys
+    global resume_selection
     sleeptime = 5
     #Search items will become user inputs after testing is finished
     searchname = input(str("Type in a job title you are looking for, such as: administrative assistant\n"))
     searchlocation = input(str("Type in a job location you are looking for, such as: Remote, USA\n"))
     num_trys = int(input("How many applications would you like to attempt?\n"))
+    resume_selection = int(input("Which resume would you like to use? Indeed's resume or your own? Please enter 1 for Indeed's and 2 for your own.\n"))
     print(f"Starting up. Various parts of the process will wait {sleeptime} seconds between actions.")
-
     driver.get("http://www.indeed.com/")
     print("Website opened: ", driver.title)
 
@@ -90,9 +92,14 @@ def jobsearch():
     search_title = driver.find_element(By.ID, "text-input-what")
     search_location = driver.find_element(By.ID, "text-input-where")
     search_title.clear()
-    search_title.send_keys(searchname)
+    time.sleep(2)
+    for char in searchname:
+        search_title.send_keys(char)
+        time.sleep(0.015)
     search_location.clear()
-    search_location.send_keys(searchlocation)
+    for char in searchlocation:
+        search_location.send_keys(char)
+        time.sleep(0.015)
     search_location.send_keys(Keys.RETURN)
     print(f"Search of {searchname} with the location set to {searchlocation}")
     time.sleep(1)
@@ -129,9 +136,13 @@ def main():
         driver.switch_to.window(driver.window_handles[0])
         driver.refresh()
         time.sleep(sleeptime)
-        submission = True
 
     while not submission:
+        resume = ""
+        if resume_selection == 1:
+            resume = "//span[text()='Indeed Resume']"
+        if resume_selection == 2:
+            resume = "//label[@data-testid='FileResumeCard-label']"
 
         captcha = "//iframe[@width='304' and @height='78' and contains(@name, 'a-') and contains(@src, 'recaptcha/enterprise/anchor')]"
         completed_path = "//h1[normalize-space(text())='Your application has been submitted!' or normalize-space(text())='Complete a test to help your application stand out' or normalize-space(text())='... share an assessment?']" #Find the missing value for this 3rd option
@@ -139,8 +150,7 @@ def main():
         submit_path = "//button[contains(span/text(), 'Submit your application')]"
         continue_path = "//button[contains(span/text(), 'Continue')]"
 
-        #Following logic is made to reduce search time on a page to decide what to do next. Instead of searching each element individually, it will search for all of the elements I am looking for. When one is found, it will then execute the related commands for that element.
-        xpaths = [review_path, captcha, completed_path, continue_path, submit_path] #The order these elements are in also reflect the order they will be searched for. So the 1st item is the top priority. Before when I had review_path after the continue_path, the continue button was being selected, even though there were unanswered questions.
+        xpaths = [resume, review_path, captcha, completed_path, continue_path, submit_path]
         combined_paths = " | ".join(xpaths)
 
         def check_element():
@@ -155,8 +165,18 @@ def main():
             except:
                 pass
         match = check_element()
+        if match == resume:
+            resume_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, resume)))
+            continue_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, continue_path)))
+            scroll_into_view(driver, resume_button)
+            click_element(driver, resume_button)
+            time.sleep(1.5)
+            scroll_into_view(driver, continue_button)
+            click_element(driver, continue_button)
+            print("Continue button selected!")
+            time.sleep(sleeptime)
 
-        if match == review_path:
+        elif match == review_path:
             print("Answer the questions on this page and progress to the next page. The program will detect when this is done.\nWaiting 10 seconds.")
             time.sleep(10)
             #TODO: Fill in some questions programatically. This is going to require the user to provide the answers to these questions within the program when they set it up so that they are unique to the user. These answers will be added to and then extracted from profiles.py, which will probably be renamed to settings.py.
@@ -175,6 +195,7 @@ def main():
 
         elif match == completed_path:
             print("Application completed!")
+            submission = True
             submission_complete()
 
         elif match == submit_path:
@@ -182,8 +203,7 @@ def main():
             scroll_into_view(driver, submit_button)
             time.sleep(2)
             submit_button.click()
-            print("Application submitted!")
-            time.sleep(2)
+            submission = True
             submission_complete()
 
         else:

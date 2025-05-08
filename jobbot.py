@@ -1,227 +1,200 @@
-# MIT License
-# Jobbot - a program to make job applications easier.
-# Copyright (c) [2024] [Christian McCrea]
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-from profilenames import profile_path, geckodriver_path
+from profilenames import profile_path, geckodriver_path, resume_selection
 from selenium import webdriver
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
-from selenium.webdriver import FirefoxProfile
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import time
 from functools import wraps
+import logging
 
-options = webdriver.FirefoxOptions()
-options.profile = webdriver.FirefoxProfile(profile_path)
-#options.add_argument("--headless")
-driver_service = Service(executable_path=geckodriver_path)
-driver = webdriver.Firefox(options=options, service = driver_service)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-# Function wrapper to ensure that a element on the page is actually visible to the bot
-def ensure_visible(func):
-    @wraps(func)
-    def wrapper(driver, element, *args, **kwargs):
-        driver.execute_script("""
-            var element = arguments[0];
-            element.style.display = 'block';
-            element.style.visibility = 'visible';
-            element.style.opacity = 1;
-        """, element)
-        return func(driver, element, *args, **kwargs)
-    return wrapper
+class Jobbot:
+    def __init__(self):
+        self.options = webdriver.FirefoxOptions()
+        self.options.profile = webdriver.FirefoxProfile(profile_path)
+        self.driver_service = Service(executable_path=geckodriver_path)
+        self.driver = webdriver.Firefox(options=self.options, service = self.driver_service)
+        self.sleeptime = 5
+        self.searchname = ""
+        self.searchlocation = ""
+        self.num_trys = int()
 
-# This function will read the xpaths available on the application page and continue down a specific path..
-# depending on if "submit" or "continue" buttons are available.
+    def ensure_visible(self, function):
+        @wraps(function)
+        def wrapper(driver, element, *args, **kwargs):
+            driver.execute_script("""
+                var element = arguments[0];
+                element.style.display = 'block';
+                element.style.visibility = 'visible';
+                element.style.opacity = 1;
+            """, element)
+            return function(driver, element, *args, **kwargs)
+        return wrapper
+
+    def scroll_into_view(self, driver, element):
+        time.sleep(0.1)
+        driver.execute_script("arguments[0].scrollIntoView(true);", element)
+        time.sleep(0.1)
+        self.ensure_visible(element)
+    def click_element(self, driver, element):
+        element.click()
+
+    def check_apply_button(self, driver, xpath):
+        try:
+            WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, xpath)))
+            return True
+        except TimeoutException:
+            return False
+
+    def check_element(self):
+        try:
+            WebDriverWait(self.driver, 6).until(EC.presence_of_element_located((By.XPATH, self.combined_paths)))
+            for xpath in self.xpaths:
+                try:
+                    self.match = self.driver.find_element(By.XPATH, xpath)
+                    return xpath
+                except:
+                    continue
+        except:
+            pass
+
+    def submission_complete(self):
+        self.submission = False
+        self.driver.close()
+        self.driver.switch_to.window(self.driver.window_handles[0])
+        self.driver.refresh()
+        time.sleep(self.sleeptime)
+
+    def start(self):
+        #Search items will become user inputs after testing is finished
+        self.searchname = input(str("Type in a job title you are looking for, such as: administrative assistant\n"))
+        self.searchlocation = input(str("Type in a job location you are looking for, such as: Remote, USA\n"))
+        self.num_trys = int(input("How many applications would you like to attempt?\n"))
+        logging.info(f"Starting up. Various parts of the process will wait {self.sleeptime} seconds between actions.")
+        self.driver.get("http://www.indeed.com/")
+        logging.info("Website opened: ", self.driver.title)
+
+    def jobsearch(self):
+        self.search_title = self.driver.find_element(By.ID, "text-input-what")
+        self.search_location = self.driver.find_element(By.ID, "text-input-where")
+        self.search_title.clear()
+        time.sleep(2)
+        for char in self.searchname:
+            self.search_title.send_keys(char)
+            time.sleep(0.015)
+            self.search_location.clear()
+            for char in self.searchlocation:
+                self.search_location.send_keys(char)
+                time.sleep(0.015)
+            self.search_location.send_keys(Keys.RETURN)
+            logging.info(f"Search of {self.searchname} with the location set to {self.searchlocation}")
+            time.sleep(1)
+
+    def main(self):
+        time.sleep(self.sleeptime)
+        jobtitles = self.driver.find_elements(By.XPATH, '//*[contains(@class, "jcs-JobTitle")]')
+        for item in jobtitles:
+            self.scroll_into_view(self.driver, item)
+            self.click_element(self.driver, item)
+            logging.info("Searching for an on-site application..")
+            self.apply_button = self.check_apply_button(self.driver, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and contains (text(),'Apply now') and not (ancestor::*[@aria-label='Apply now (opens in a new  tab)'])]")
+            if self.apply_button:
+                self.apply_button = WebDriverWait(self.driver, self.sleeptime).until(EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and contains (text(),'Apply now') and not (ancestor::*[@aria-label='Apply now (opens in a  new  tab)'])]")))
+                logging.info("Eligible application found!")
+                time.sleep(1.5)
+                self.apply_button.click()
+                break
+            else:
+                logging.info("This job is offsite. Lets try another one..")
+                continue
+
+        self.driver.switch_to.window(self.driver.window_handles[1])
+        logging.info("Focusing on newly opened tab..")
+        time.sleep(self.sleeptime)
+
+        while not self.submission:
+            self.resume = ""
+            if resume_selection == 1:
+                self.resume = "//span[text()='Indeed Resume']" #Indeed's resume
+                if resume_selection == 2:
+                    self.resume = "//label[@data-testid='FileResumeCard-label']" #User uploaded resume
+
+            self.captcha = "//iframe[@width='304' and @height='78' and contains(@name, 'a-') and contains(@src, 'recaptcha/enterprise/anchor')]"
+            self.completed_path = "//h1[normalize-space(text())='Your application has been submitted!' or normalize-space(text())='Complete a test to help your application stand out' or normalize-space(text())='... share an assessment?']" #Find the missing value for this 3rd option
+            self.review_path = "//button[contains(span/text(), 'Review your application') or //h1[normalize-space(text())='Answer these questions from the employer']]"
+            self.submit_path = "//button[contains(span/text(), 'Submit your application')]"
+            self.continue_path = "//button[contains(span/text(), 'Continue')]"
+
+            self.xpaths = [self.resume, self.review_path, self.captcha, self.completed_path, self.continue_path, self.submit_path]
+            self.combined_paths = " | ".join(self.xpaths)
 
 
-def check_apply_button(driver, xpath):
-    try:
-        WebDriverWait(driver, 2).until(EC.presence_of_element_located((By.XPATH, xpath)))
-        return True
-    except TimeoutException:
-        return False
+            self.match = self.check_element()
+            if self.match == self.resume:
+                self.resume_button = WebDriverWait(self.driver, self.sleeptime).until(EC.presence_of_element_located((By.XPATH, self.resume)))
+                self.continue_button = WebDriverWait(self.driver, self.sleeptime).until(EC.presence_of_element_located((By.XPATH, self.continue_path)))
+                self.scroll_into_view(self.driver, self.resume_button)
+                self.click_element(self.driver, self.resume_button)
+                time.sleep(1.5)
+                self.scroll_into_view(self.driver, self.continue_button)
+                self.click_element(self.driver, self.continue_button)
+                logging.info("Continue button selected!")
+                time.sleep(self.sleeptime)
 
-# This function exists to move the viewport directly to where the element is
-def scroll_into_view(driver, element):
-    time.sleep(0.25)
-    driver.execute_script("arguments[0].scrollIntoView(true);", element)
-    time.sleep(0.25)
-@ensure_visible
-def click_element(driver, element):
-    element.click()
+            elif self.match == self.review_path:
+                logging.info("Answer the questions on this page and progress to the next page. The program will detect when this is done.\nWaiting 10 seconds.")
+                time.sleep(10)
+                #TODO: Fill in some questions programatically. This is going to require the user to provide the answers to these questions within the program when they set it up so that   they are unique to the user. These answers will be added to and then extracted from profiles.py, which will probably be renamed to settings.py.
 
-def init():
+            elif self.match == self.continue_path:
+                self.continue_button = WebDriverWait(self.driver, self.sleeptime).until(EC.presence_of_element_located((By.XPATH, self.continue_path)))
+                self.scroll_into_view(self.driver, self.continue_button)
+                self.click_element(self.driver, self.continue_button)
+                logging.info("Continue button selected!")
+                time.sleep(self.sleeptime)
 
-    global sleeptime
-    global searchname
-    global searchlocation
-    global num_trys
-    global resume_selection
-    sleeptime = 5
-    #Search items will become user inputs after testing is finished
-    searchname = input(str("Type in a job title you are looking for, such as: administrative assistant\n"))
-    searchlocation = input(str("Type in a job location you are looking for, such as: Remote, USA\n"))
-    num_trys = int(input("How many applications would you like to attempt?\n"))
-    resume_selection = int(input("Which resume would you like to use? Indeed's resume or your own? Please enter 1 for Indeed's and 2 for your own.\n"))
-    print(f"Starting up. Various parts of the process will wait {sleeptime} seconds between actions.")
-    driver.get("http://www.indeed.com/")
-    print("Website opened: ", driver.title)
+            elif self.match == self.captcha:
+                logging.info("Captcha detected! Please complete it and then hit the submit button. The program will continue in 10 seconds..")
+                time.sleep(10)
+                continue
 
-def jobsearch():
-    search_title = driver.find_element(By.ID, "text-input-what")
-    search_location = driver.find_element(By.ID, "text-input-where")
-    search_title.clear()
-    time.sleep(2)
-    for char in searchname:
-        search_title.send_keys(char)
-        time.sleep(0.015)
-    search_location.clear()
-    for char in searchlocation:
-        search_location.send_keys(char)
-        time.sleep(0.015)
-    search_location.send_keys(Keys.RETURN)
-    print(f"Search of {searchname} with the location set to {searchlocation}")
-    time.sleep(1)
+            elif self.match == self.completed_path:
+                logging.info("Application completed!")
+                self.submission = True
+                self.submission_complete()
 
-def main():
-    time.sleep(sleeptime)
-    jobtitles = driver.find_elements(By.XPATH, '//*[contains(@class, "jcs-JobTitle")]')
-    for item in jobtitles:
-        scroll_into_view(driver, item)
-        click_element(driver, item)
-        print("Searching for an on-site application..")
-        apply_button = check_apply_button(driver, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and contains (text(),'Apply now') and not (ancestor::*[@aria-label='Apply now (opens in a new  tab)'])]")
-        if apply_button:
-            apply_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, "//span[contains(@class, 'jobsearch-IndeedApplyButton-newDesign') and contains (text(),'Apply now') and not (ancestor::*[@aria-label='Apply now (opens in a new  tab)'])]")))
-            print("Eligible application found!")
-            time.sleep(3)
-            apply_button.click()
-            break
-        else:
-            print("This job is offsite. Lets try another one..")
-            continue
+            elif self.match == self.submit_path:
+                self.submit_button = WebDriverWait(self.driver, self.sleeptime).until (EC.presence_of_element_located((By.XPATH, self.submit_path)))
+                self.scroll_into_view(self.driver, self.submit_button)
+                time.sleep(2)
+                self.submit_button.click()
+                time.sleep(1.5)
+                self.submission = True
+                self.submission_complete()
 
+            else:
+                logging.info("None of the expected elements were found!")
+                break
 
-    time.sleep(1.5)
-    driver.switch_to.window(driver.window_handles[1])
-    print("Focusing on newly opened tab..")
-    time.sleep(sleeptime)
+    def mainloop(self):
+        self.start()
+        self.counter = 0
+        while self.counter < self.num_trys:
+            self.jobsearch()
+            self.main()
+            self.counter = self.counter + 1
+            logging.info(f"There are {self.num_trys - self.counter} attempts remaining.")
 
-
-
-    submission = False
-    def submission_complete():
-        driver.close()
-        driver.switch_to.window(driver.window_handles[0])
-        driver.refresh()
-        time.sleep(sleeptime)
-
-    while not submission:
-        resume = ""
-        if resume_selection == 1:
-            resume = "//span[text()='Indeed Resume']"
-        if resume_selection == 2:
-            resume = "//label[@data-testid='FileResumeCard-label']"
-
-        captcha = "//iframe[@width='304' and @height='78' and contains(@name, 'a-') and contains(@src, 'recaptcha/enterprise/anchor')]"
-        completed_path = "//h1[normalize-space(text())='Your application has been submitted!' or normalize-space(text())='Complete a test to help your application stand out' or normalize-space(text())='... share an assessment?']" #Find the missing value for this 3rd option
-        review_path = "//button[contains(span/text(), 'Review your application') or //h1[normalize-space(text())='Answer these questions from the employer']]"
-        submit_path = "//button[contains(span/text(), 'Submit your application')]"
-        continue_path = "//button[contains(span/text(), 'Continue')]"
-
-        xpaths = [resume, review_path, captcha, completed_path, continue_path, submit_path]
-        combined_paths = " | ".join(xpaths)
-
-        def check_element():
-            try:
-                WebDriverWait(driver, 6).until(EC.presence_of_element_located((By.XPATH, combined_paths)))
-                for xpath in xpaths:
-                    try:
-                        match = driver.find_element(By.XPATH, xpath)
-                        return xpath
-                    except:
-                        continue
-            except:
-                pass
-        match = check_element()
-        if match == resume:
-            resume_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, resume)))
-            continue_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, continue_path)))
-            scroll_into_view(driver, resume_button)
-            click_element(driver, resume_button)
-            time.sleep(1.5)
-            scroll_into_view(driver, continue_button)
-            click_element(driver, continue_button)
-            print("Continue button selected!")
-            time.sleep(sleeptime)
-
-        elif match == review_path:
-            print("Answer the questions on this page and progress to the next page. The program will detect when this is done.\nWaiting 10 seconds.")
-            time.sleep(10)
-            #TODO: Fill in some questions programatically. This is going to require the user to provide the answers to these questions within the program when they set it up so that they are unique to the user. These answers will be added to and then extracted from profiles.py, which will probably be renamed to settings.py.
-
-        elif match == continue_path:
-            continue_button = WebDriverWait(driver, sleeptime).until(EC.presence_of_element_located((By.XPATH, continue_path)))
-            scroll_into_view(driver, continue_button)
-            click_element(driver, continue_button)
-            print("Continue button selected!")
-            time.sleep(sleeptime)
-
-        elif match == captcha:
-            print("Captcha detected! Please complete it and then hit the submit button. The program will continue in 10 seconds..")
-            time.sleep(10)
-            continue
-
-        elif match == completed_path:
-            print("Application completed!")
-            submission = True
-            submission_complete()
-
-        elif match == submit_path:
-            submit_button = WebDriverWait(driver, sleeptime).until (EC.presence_of_element_located((By.XPATH, submit_path)))
-            scroll_into_view(driver, submit_button)
-            time.sleep(2)
-            submit_button.click()
-            submission = True
-            submission_complete()
-
-        else:
-            print("None of the expected elements were found!")
-            break
-
+program = Jobbot()
 try:
-    init()
-    counter = 0
-    while counter < num_trys:
-        jobsearch()
-        main()
-        counter = counter + 1
-        print(f"There are {num_trys - counter} attempts remaining.")
-
+    program.mainloop()
 except Exception as e:
-    print("There has been an error. See: ", e)
+    logging.info("There has been an error. See: ", e)
 
 finally:
-    driver.quit()
-    print("Browser closed!")
+    program.driver.quit()
+    logging.info("Browser closed!")

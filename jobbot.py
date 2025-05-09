@@ -1,6 +1,6 @@
-from profilenames import profile_path, geckodriver_path, resume_selection
 from selenium import webdriver
-from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
@@ -14,14 +14,30 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 
 class Jobbot:
     def __init__(self):
-        self.options = webdriver.FirefoxOptions()
-        self.options.profile = webdriver.FirefoxProfile(profile_path)
-        self.driver_service = Service(executable_path=geckodriver_path)
-        self.driver = webdriver.Firefox(options=self.options, service = self.driver_service)
+        self.options = Options()
+        self.options.add_argument("--user-data-dir=jobbot_profile/")
+        self.options.add_argument("--disable-blink-features=AutomationControlled")
+        self.options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
+        self.options.add_experimental_option("useAutomationExtension", False)
+
+        self.driver_service = Service(executable_path="chromedriver-linux64/chromedriver")
+        self.driver = webdriver.Chrome(options=self.options, service=self.driver_service)
         self.sleeptime = 5
         self.searchname = ""
         self.searchlocation = ""
         self.num_trys = int()
+        self.submission = False
+
+        self.resume = ""
+        self.resume_selection = 2
+        self.captcha = "//iframe[@width='304' and @height='78' and contains(@name, 'a-') and contains(@src, 'recaptcha/enterprise/anchor')]"
+        self.captcha2 = "//title[contains(text(), 'Security Check - Indeed.com')]"
+        self.completed_path = "//h1[normalize-space(text())='Your application has been submitted!' or normalize-space(text())='Complete a test to help your application stand out' or normalize-space(text())='... share an assessment?']" #Find the missing value for this 3rd option
+        self.review_path = "//button[contains(span/text(), 'Review your application') or //h1[normalize-space(text())='Answer these questions from the employer']]"
+        self.submit_path = "//button[contains(span/text(), 'Submit your application')]"
+        self.continue_path = "//button[contains(span/text(), 'Continue')]"
+        self.xpaths = [self.resume, self.review_path, self.captcha, self.completed_path, self.continue_path, self.submit_path]
+        self.combined_paths = " | ".join(self.xpaths)
 
     def ensure_visible(self, function):
         @wraps(function)
@@ -85,19 +101,28 @@ class Jobbot:
         time.sleep(2)
         for char in self.searchname:
             self.search_title.send_keys(char)
-            time.sleep(0.015)
+            time.sleep(0.09)
             self.search_location.clear()
-            for char in self.searchlocation:
-                self.search_location.send_keys(char)
-                time.sleep(0.015)
-            self.search_location.send_keys(Keys.RETURN)
-            logging.info(f"Search of {self.searchname} with the location set to {self.searchlocation}")
-            time.sleep(1)
+        for char in self.searchlocation:
+            self.search_location.send_keys(char)
+            time.sleep(0.09)
+        self.search_location.send_keys(Keys.RETURN)
+        logging.info(f"Search of {self.searchname} with the location set to {self.searchlocation}")
+        time.sleep(1)
+
+    def captchacheck(self):
+        self.match = self.check_element()
+        if self.match == self.captcha:
+            logging.info("Captcha detected! Please complete this captcha to continue. Resuming in 15 seconds")
+            time.sleep(15)
+            self.match = self.check_element()
+            pass
 
     def main(self):
         time.sleep(self.sleeptime)
-        jobtitles = self.driver.find_elements(By.XPATH, '//*[contains(@class, "jcs-JobTitle")]')
-        for item in jobtitles:
+
+        self.jobtitles = self.driver.find_elements(By.XPATH, '//*[contains(@class, "jcs-JobTitle")]')
+        for item in self.jobtitles:
             self.scroll_into_view(self.driver, item)
             self.click_element(self.driver, item)
             logging.info("Searching for an on-site application..")
@@ -117,21 +142,10 @@ class Jobbot:
         time.sleep(self.sleeptime)
 
         while not self.submission:
-            self.resume = ""
-            if resume_selection == 1:
+            if self.resume_selection == 1:
                 self.resume = "//span[text()='Indeed Resume']" #Indeed's resume
-                if resume_selection == 2:
+                if self.resume_selection == 2:
                     self.resume = "//label[@data-testid='FileResumeCard-label']" #User uploaded resume
-
-            self.captcha = "//iframe[@width='304' and @height='78' and contains(@name, 'a-') and contains(@src, 'recaptcha/enterprise/anchor')]"
-            self.completed_path = "//h1[normalize-space(text())='Your application has been submitted!' or normalize-space(text())='Complete a test to help your application stand out' or normalize-space(text())='... share an assessment?']" #Find the missing value for this 3rd option
-            self.review_path = "//button[contains(span/text(), 'Review your application') or //h1[normalize-space(text())='Answer these questions from the employer']]"
-            self.submit_path = "//button[contains(span/text(), 'Submit your application')]"
-            self.continue_path = "//button[contains(span/text(), 'Continue')]"
-
-            self.xpaths = [self.resume, self.review_path, self.captcha, self.completed_path, self.continue_path, self.submit_path]
-            self.combined_paths = " | ".join(self.xpaths)
-
 
             self.match = self.check_element()
             if self.match == self.resume:
@@ -185,6 +199,7 @@ class Jobbot:
         self.counter = 0
         while self.counter < self.num_trys:
             self.jobsearch()
+            self.captchacheck()
             self.main()
             self.counter = self.counter + 1
             logging.info(f"There are {self.num_trys - self.counter} attempts remaining.")
@@ -193,7 +208,7 @@ program = Jobbot()
 try:
     program.mainloop()
 except Exception as e:
-    logging.info("There has been an error. See: ", e)
+    logging.info(f"There has been an error. See: {e}")
 
 finally:
     program.driver.quit()

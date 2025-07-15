@@ -11,7 +11,7 @@ from functools import wraps
 import logging
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
-
+# If chromedriver out of date check here: https://googlechromelabs.github.io/chrome-for-testing/#stable
 class Jobbot:
     def __init__(self):
         self.options = Options()
@@ -20,6 +20,7 @@ class Jobbot:
         self.options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
         self.options.add_experimental_option("useAutomationExtension", False)
 
+        self.options.binary_location = "/usr/bin/chromium-browser"
         self.driver_service = Service(executable_path="chromedriver-linux64/chromedriver")
         self.driver = webdriver.Chrome(options=self.options, service=self.driver_service)
         self.sleeptime = 5

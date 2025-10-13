@@ -18,7 +18,7 @@ Currently the bot must be supervised, because the user is required to answer job
 1) A linux operating system or the capability to run BASH commands.
 2) Python (sudo apt install python3)
 3) Selenium (pip install selenium)
-4) Chromium browser (Google Chrome may work)
+4) Chrome or Chromium version
 
 ## Setup
 1) Install Python and Selenium
